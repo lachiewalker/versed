@@ -4,6 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "versed"
+version = "0.0.1"
 dynamic = ["version"]
 description = ''
 readme = "README.md"
@@ -37,7 +38,7 @@ Issues = "https://github.com/lachiewalker/versed/issues"
 Source = "https://github.com/lachiewalker/versed"
 
 [tool.hatch.version]
-path = "src/versed/__about__.py"
+path = "pyproject.toml"
 
 [tool.hatch.envs.types]
 extra-dependencies = [
