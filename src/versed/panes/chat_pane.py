@@ -10,35 +10,8 @@ from textual.widgets import (
 from textual.events import Resize
 
 
-class UserMessage(Container):
-
-    DEFAULT_CSS = """
-    #chat-message {
-        height: auto;
-        align: left top;
-        background: $secondary;
-        padding: 1;
-        margin: 1;
-    }
-
-    #message {
-        align-horizontal: left;
-        width: 70%;
-        height: auto;
-    }
-    """
-    def __init__(self, text: str) -> None:
-        self.text = text
-        super().__init__()
-
-    def compose(self) -> ComposeResult:
-        with Horizontal(id="chat-message"):
-            self.text_area = Static(self.text, id="message")
-            yield self.text_area
-
-
 class ChatPane(Container):
-    """The right pane with a vertical split and input field at the bottom."""
+    """Pane with a chat window and text input stacked vertically."""
 
     DEFAULT_CSS = """
     #messages-window {
@@ -49,33 +22,25 @@ class ChatPane(Container):
         overflow: auto scroll;
     }
 
-    .message_container {
-        height: auto
-    }
-
     #placeholder-label {
         height: 100%;
         width: 100%;
-        align: center middle;
         color: $text-disabled;
+        content-align: center middle;
     }
 
     .user-message, .bot-message {
-        width: 70%;
+        width: auto;
         height: auto;
         padding: 1;
         margin: 1;
     }
 
     .user-message {
-        align-vertical: top;
-        align-horizontal: left;
         background: $secondary;
     }
 
     .bot-message {
-        align-vertical: top;
-        align-horizontal: right;
         background: $panel;
     }
 
@@ -125,9 +90,9 @@ class ChatPane(Container):
     ]
     
     def compose(self) -> ComposeResult:
-        # Top 80% container: Scrollable space
-        yield VerticalScroll(id="messages-window")
-            # yield Label("Ask a query...", id="placeholder-label")
+        # Top 80% container: Scrollable chat messages
+        with VerticalScroll(id="messages-window"):
+            yield Label("Ask a query...", id="placeholder-label")
 
         # Bottom 20% container: Text input and buttons
         with Horizontal(id="input-container"):
@@ -142,7 +107,6 @@ class ChatPane(Container):
 
     def on_resize(self, event: Resize) -> None:
         """Dynamically adjust child widget sizes when the container is resized."""
-        # Get the width of the parent container
         def dynamic_size_input_bar():
             input_container = self.app.query_one("#input-container")
             parent_width = input_container.size.width
@@ -175,40 +139,16 @@ class ChatPane(Container):
 
     async def add_message(self, text: str, is_user: bool) -> None:
         """Add a message to the scrollable container."""
-        # placeholder_label = self.query_one("#placeholder-label")
-        placeholder_label = self.query("#placeholder-label")
-        # placeholder_label.styles.display = "none"
-        if placeholder_label:
-            placeholder_label.remove()
+        placeholder_label = self.query_one("#placeholder-label")
+        placeholder_label.styles.display = "none"
 
         message_window = self.query_one("#messages-window")
-        # message_window.remove(placeholder_label)
 
-        if is_user:
-            message_class = "user-message"
-            message_box = Static(text, classes=message_class)
-            height = message_box.styles.height
-            # message_box.styles.align_horizontal = "left"
-            message_container = Horizontal(
-                message_box,
-                classes="message-container"
-            )
-            message_container.styles.height = height
-            # message_box = UserMessage(text)
+        message_class = "user-message" if is_user else "bot-message"
+        message_box = Static(text, classes=message_class)
 
-        else:
-            message_class = "bot-message"
-            message_box = Static(text, classes=message_class)
-            height = message_box.styles.height
-            # message_box.styles.align_horizontal = "right"
-            message_container = Horizontal(
-                message_box,
-                classes="message-container"
-            )
-            message_container.styles.height = height
-
-        message_window.mount(message_container)
-        message_window.scroll_visible()
+        message_window.mount(message_box)
+        message_window.scroll_end()
 
     # async def generate_bot_response(self, user_message: str) -> str:
     #     """Simulate bot response logic (replace with actual logic)."""

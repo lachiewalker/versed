@@ -1,3 +1,13 @@
+# Editor configuration
 .vscode
-.venv
+
+# Virtual environment
+.venv/
+
+# Build artifacts
+dist/
+build/
+
+# Cache
 **/__pycache__
+**/*.pyc

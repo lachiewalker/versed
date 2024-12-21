@@ -5,7 +5,6 @@ from textual.widgets import (
     Footer
 )
 from textual.screen import Screen
-from textual.events import Resize
 
 from panes.directory_pane import DirectoryPane
 from panes.chat_pane import ChatPane

@@ -24,7 +24,12 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = []
+dependencies = [
+    "textual",
+    "pymilvus",
+    "google-auth-oauthlib",
+    "google-api-python-client",
+]
 
 [project.urls]
 Documentation = "https://github.com/lachiewalker/versed#readme"
