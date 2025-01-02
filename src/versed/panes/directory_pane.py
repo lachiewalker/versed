@@ -8,7 +8,7 @@ from textual.widgets import (
 
 
 class DirectoryPane(Container):
-    """Tabbed pane containing DirectoryTrees for file sources and destination index."""\
+    """Tabbed pane containing DirectoryTrees for file sources and destination index."""
     
     DEFAULT_CSS = """
     DirectoryPane {
