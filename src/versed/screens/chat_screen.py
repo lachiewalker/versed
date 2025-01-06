@@ -13,14 +13,10 @@ from panes.directory_pane import DirectoryPane
 class Canvas(Container):
     """A container with a 40/60 horizontal split."""
 
-    def __init__(self, app_name):
-        super().__init__()
-        self.app_name = app_name
-
     def compose(self) -> ComposeResult:
         with Horizontal(id="horizontal-split"):
             self.dir_pane = DirectoryPane()
-            self.chat_pane =  ChatPane(self.app_name)
+            self.chat_pane =  ChatPane()
             yield self.dir_pane
             yield self.chat_pane
 
@@ -37,13 +33,9 @@ class ChatScreen(Screen):
     Footer {
         dock: bottom;
     }
-    """
-
-    def __init__(self, app_name):
-        super().__init__()
-        self.app_name = app_name    
+    """  
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Canvas(self.app_name)
+        yield Canvas()
         yield Footer()

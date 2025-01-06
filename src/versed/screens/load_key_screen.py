@@ -70,10 +70,9 @@ class LoadKeyScreen(ModalScreen):
     }
     """
 
-    def __init__(self, app_name):
+    def __init__(self) -> None:
         super().__init__()
-        self.app_name = app_name
-        self.key_handler = ApiKeyHandler(self.app_name)
+        self.key_handler = ApiKeyHandler(self.app.app_name)
         self.aliases = self.key_handler.get_aliases()
         self.options = [Option(alias, id=f"{alias}") for alias in self.aliases]
 

@@ -9,7 +9,7 @@ from textual.widgets import (
     TextArea
 )
 
-from keys import ApiKeyHandler
+from openai import OpenAI
 
 
 class ChatPane(Container):
@@ -91,11 +91,9 @@ class ChatPane(Container):
         ('shift+tab', 'send_message', 'Send')
     ]
 
-    def __init__(self, app_name):
+    def __init__(self) -> None:
         super().__init__()
-        self.app_name = app_name
-        self.key_handler = ApiKeyHandler(self.app_name)
-        self.aliases = self.key_handler.get_aliases()
+        self.client = OpenAI(api_key=self.app.api_key)
     
     def compose(self) -> ComposeResult:
         # Top 80% container: Scrollable chat messages
@@ -112,9 +110,10 @@ class ChatPane(Container):
                 self.clear_button = Button("CLR", id="clear")
                 yield self.clear_button
 
-
     def on_resize(self, event: Resize) -> None:
-        """Dynamically adjust child widget sizes when the container is resized."""
+        """
+        Dynamically adjust child widget sizes when the container is resized.
+        """
         def dynamic_size_input_bar():
             input_container = self.app.query_one("#input-container")
             parent_width = input_container.size.width
@@ -126,7 +125,6 @@ class ChatPane(Container):
 
         dynamic_size_input_bar()
 
-
     @on(Button.Pressed, "#send")
     async def action_send_message(self) -> None:
         input_field = self.query_one("#text-area")
@@ -135,18 +133,18 @@ class ChatPane(Container):
             await self.add_message(user_query, True)
             input_field.clear()
 
-            response = f"Responding..."
+            response = await self.generate_bot_response(user_query)
             
             await self.add_message(response, False)
-
 
     @on(Button.Pressed, "#clear")
     def clear_input(self) -> None:
         pass
 
-
     async def add_message(self, text: str, is_user: bool) -> None:
-        """Add a message to the scrollable container."""
+        """
+        Add a message to the scrollable container.
+        """
         placeholder_label = self.query_one("#placeholder-label")
         placeholder_label.styles.display = "none"
 
@@ -158,7 +156,19 @@ class ChatPane(Container):
         message_window.mount(message_box)
         message_window.scroll_end()
 
-    # async def generate_bot_response(self, user_message: str) -> str:
-    #     """Simulate bot response logic (replace with actual logic)."""
-    #     # Placeholder bot response logic
-    #     return f"Echo: {user_message}"
+    async def generate_bot_response(self, user_message: str) -> str:
+        """
+        Generate bot response.
+        """
+        response = self.client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": user_message,
+                }
+            ],
+            model="gpt-4o",
+        )
+        
+        assistant_message = response.choices[0].message.content
+        return assistant_message

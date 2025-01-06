@@ -4,13 +4,13 @@ import os
 from platformdirs import user_data_dir
 from pathlib import Path
 
+
 class ApiKeyHandler:
     def __init__(self, app_name):
         self.app_name = app_name
         self.service_name = f"{self.app_name}_key"
         self.data_dir = Path(user_data_dir(self.app_name)) / "keys"
 
-        # Ensure the keys subdirectory exists
         try:
             self.data_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
@@ -18,7 +18,7 @@ class ApiKeyHandler:
 
     def get_fernet_key(self):
         """
-        Retrieve or generate a secure key
+        Retrieve or generate a secure key.
         """
         try:
             key = keyring.get_password(self.service_name, "encryption_key")
@@ -47,7 +47,7 @@ class ApiKeyHandler:
 
     def load_api_key(self, alias):
         """
-        Load and decrypt an API key using its alias.
+        Load and decrypt the API key for a given alias.
         """
         api_key_file = self.data_dir / f"{alias}.enc"
         if not api_key_file.exists():

@@ -79,10 +79,6 @@ class AddKeyScreen(ModalScreen):
     }
     """
 
-    def __init__(self, app_name):
-        super().__init__()
-        self.app_name = app_name
-
     def compose(self) -> ComposeResult:
         yield Vertical(
             Label("Key Alias", id="alias_label"),
@@ -108,7 +104,7 @@ class AddKeyScreen(ModalScreen):
         except:
             return False
 
-    async def show_message(self, message: str, css_classes: str):
+    async def show_message(self, message: str, css_classes: str) -> None:
         """Display a temporary message at the bottom of the dialog."""
         try:
             indicator = self.query_one(".error", Static)
@@ -125,7 +121,7 @@ class AddKeyScreen(ModalScreen):
         alias = self.query_one("#alias_input", Input).value
         api_key = self.query_one("#key_input", Input).value
 
-        async def handle_submit():
+        async def handle_submit() -> None:
             if await self.validate_api_key(api_key):
                 submit_button = self.query_one("#submit", Button)
                 back_button = self.query_one("#back", Button)
@@ -135,7 +131,7 @@ class AddKeyScreen(ModalScreen):
                 await self.show_message("Success!", "success")
 
                 # Store the encrypted api key
-                key_handler = ApiKeyHandler(self.app_name)
+                key_handler = ApiKeyHandler(self.app.app_name)
                 key_handler.save_api_key(api_key, alias)
 
                 # Disable clickables

@@ -10,6 +10,7 @@ from pathlib import Path
 from pymilvus import MilvusClient, FieldSchema, DataType, CollectionSchema
 from contextlib import contextmanager
 
+from keys import ApiKeyHandler
 
 @contextmanager
 def milvus_client(uri):
@@ -28,10 +29,10 @@ class DocumentChat(App):
         ("d", "toggle_dark", "Toggle dark mode")
     ]
 
-    def __init__(self, app_name):
+    def __init__(self, app_name) -> None:
         super().__init__()
         self.app_name = app_name
-        self.key = None
+        self.api_key = None
 
         self.devtools = None
 
@@ -39,15 +40,20 @@ class DocumentChat(App):
 
         def select_key(key: str | None) -> None:
             if key:
-                self.key = key
+                try:
+                    key_handler = ApiKeyHandler()
+                    api_key = key_handler.load_api_key(key)
+                    self.api_key = key
+                except:
+                    print(f"Unable to load key '{key}'.")
 
         self.push_screen("load_key", select_key)
 
-    async def on_mount(self):
+    async def on_mount(self) -> None:
         # Install screens with the necessary constructor arguments
-        self.install_screen(ChatScreen(self.app_name), name="chat")
-        self.install_screen(AddKeyScreen(self.app_name), name="add_key")
-        self.install_screen(LoadKeyScreen(self.app_name), name="load_key")
+        self.install_screen(ChatScreen(), name="chat")
+        self.install_screen(AddKeyScreen(), name="add_key")
+        self.install_screen(LoadKeyScreen(), name="load_key")
 
         self.push_screen("chat")
 
