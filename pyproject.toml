@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "versed"
-version = "0.0.1"
+version = "0.0.2"
 dynamic = ["version"]
 description = ''
 readme = "README.md"
@@ -30,7 +30,10 @@ dependencies = [
     "pymilvus",
     "google-auth-oauthlib",
     "google-api-python-client",
-    "platformdirs"
+    "platformdirs",
+    "keyring",
+    "cryptography",
+    "openai"
 ]
 
 [project.urls]

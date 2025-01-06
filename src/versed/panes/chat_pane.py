@@ -1,13 +1,15 @@
-from textual.app import ComposeResult
 from textual import on
+from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
+from textual.events import Resize
 from textual.widgets import (
-    TextArea,
     Button,
     Label,
-    Static
+    Static,
+    TextArea
 )
-from textual.events import Resize
+
+from keys import ApiKeyHandler
 
 
 class ChatPane(Container):
@@ -88,6 +90,12 @@ class ChatPane(Container):
     BINDINGS = [
         ('shift+tab', 'send_message', 'Send')
     ]
+
+    def __init__(self, app_name):
+        super().__init__()
+        self.app_name = app_name
+        self.key_handler = ApiKeyHandler(self.app_name)
+        self.aliases = self.key_handler.get_aliases()
     
     def compose(self) -> ComposeResult:
         # Top 80% container: Scrollable chat messages
@@ -145,7 +153,7 @@ class ChatPane(Container):
         message_window = self.query_one("#messages-window")
 
         message_class = "user-message" if is_user else "bot-message"
-        message_box = Static(text, classes=message_class)
+        message_box = Static(text.strip(), classes=message_class)
 
         message_window.mount(message_box)
         message_window.scroll_end()
