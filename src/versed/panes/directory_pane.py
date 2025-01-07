@@ -7,20 +7,81 @@ from textual.containers import Container, Vertical
 from textual.widgets import (
     Button,
     DirectoryTree,
+    Static,
     TabPane,
     TabbedContent,
     Tree
 )
 from textual.widgets.directory_tree import DirEntry
 from textual.widgets.tree import TreeNode
+from typing import TYPE_CHECKING, Callable, ClassVar, Iterable, Iterator
 
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 
 class GoogleDriveTree(Tree):
 
     SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+
+    ICON_NODE_EXPANDED = "📂 "
+    ICON_NODE = "📁 "
+    ICON_FILE = "📄 "
+    """Unicode 'icon' to represent a file."""
+
+    COMPONENT_CLASSES: ClassVar[set[str]] = {
+        "directory-tree--extension",
+        "directory-tree--file",
+        "directory-tree--folder",
+        "directory-tree--hidden",
+    }
+    """
+    | Class | Description |
+    | :- | :- |
+    | `directory-tree--extension` | Target the extension of a file name. |
+    | `directory-tree--file` | Target files in the directory structure. |
+    | `directory-tree--folder` | Target folders in the directory structure. |
+    | `directory-tree--hidden` | Target hidden items in the directory structure. |
+
+    See also the [component classes for `Tree`][textual.widgets.Tree.COMPONENT_CLASSES].
+    """
+
+    DEFAULT_CSS = """
+    DirectoryTree {
+        
+        & > .directory-tree--folder {
+            text-style: bold;
+        }
+
+        & > .directory-tree--extension {
+            text-style: italic;
+        }
+
+        & > .directory-tree--hidden {
+            color: $text 50%;
+        }
+
+        &:ansi {
+        
+            & > .tree--guides {
+               color: transparent;              
+            }
+        
+            & > .directory-tree--folder {
+                text-style: bold;
+            }
+
+            & > .directory-tree--extension {
+                text-style: italic;
+            }
+
+            & > .directory-tree--hidden {
+                color: ansi_default;
+                text-style: dim;
+            }
+        }
+    }
+    """
+
 
     def __init__(self, label, id="google-drive-tree"):
         super().__init__(label, id=id)
@@ -144,6 +205,20 @@ class DirectoryPane(Container):
         padding: 1;
     }
 
+    #google-drive {
+        height: 1fr;
+        align: center middle;
+    }
+
+    #log-in {
+        width: 8;
+        height: 3;
+        text-align: center;
+    }
+    #log-in:focus {
+        text-style: bold;
+    }
+
     #index-button {
         width: 1fr;
         height: 3;
@@ -164,17 +239,29 @@ class DirectoryPane(Container):
                 with TabPane("Local Files", id="local-files"):
                     yield DirectoryTree(".", id="local-tree")
                 with TabPane("Google Drive", id="google-drive"):
-                    yield GoogleDriveTree("Google Drive", id="gdrive-tree")
+                    self.log_in = Button("Log in", variant="success", id="log-in")
+                    yield self.log_in
             yield Button("Add to Index", id="index-button")
 
     def on_mount(self) -> None:
         # Store references to the widgets and initialize state
-        self.index_tree: EmptyDirectoryTree = self.query_one("#index-tree", EmptyDirectoryTree)
-        self.local_tree: DirectoryTree = self.query_one("#local-tree", DirectoryTree)
-        self.gdrive_tree: DirectoryTree = self.query_one("#gdrive-tree", Tree)
-        self.index_button: Button = self.query_one("#index-button", Button)
+        self.index_tab = self.query_one("#indexed-files", TabPane)
+        self.local_tab = self.query_one("#local-files", TabPane)
+        self.gdrive_tab = self.query_one("#google-drive", TabPane)
+        self.index_button = self.query_one("#index-button", Button)
 
         # self.index_button.disabled = True
         self.added_files = set()
         self.selected_source = None
+
+    @on(Button.Pressed, "#log-in")
+    async def action_log_in(self) -> None:
+        google_tab = self.query_one("#google-drive", TabPane)
+        login_button = self.query_one("#log-in", Button)
+        if self.app.credentials:
+            login_button.remove()
+            google_tab.mount(GoogleDriveTree("Google Drive", id="gdrive-tree"))
+        else:
+            google_tab.mount(Static("Credentials file not found."))
+            login_button.disabled = True
 

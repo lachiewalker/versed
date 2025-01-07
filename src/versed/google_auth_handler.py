@@ -2,6 +2,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 import json
+from pathlib import Path
 
 from secret_handler import SecretHandler
 
@@ -38,12 +39,18 @@ class GoogleAuthHandler:
                 creds.refresh(Request())
 
         except FileNotFoundError:
-            # Run the authentication flow if no valid credentials are found
-            creds = self.authenticate_with_browser()
+            pass
 
-            # Save the credentials
-            json_creds = creds.to_json()
-            self.secret_handler.save_google_credential(json_creds)         
+        # Check for the existence of credentials.json before authenticating
+        if not Path(GoogleAuthHandler.CREDENTIALS_FILE).exists():
+            raise FileNotFoundError(f"Required file '{GoogleAuthHandler.CREDENTIALS_FILE}' not found.")
+        
+        # Run the authentication flow if no valid credentials are found
+        creds = self.authenticate_with_browser()
+
+        # Save the credentials
+        json_creds = creds.to_json()
+        self.secret_handler.save_google_credential(json_creds)         
 
         return creds
         
@@ -52,7 +59,7 @@ class GoogleAuthHandler:
         Authenticate the user using OAuth 2.0 and return credentials.
         """
         flow = InstalledAppFlow.from_client_secrets_file(
-            'credentials.json', self.SCOPES
+            GoogleAuthHandler.CREDENTIALS_FILE, self.SCOPES
         )
         # Run local server for OAuth 2.0 redirect
         creds = flow.run_local_server(port=self.port)
