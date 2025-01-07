@@ -58,16 +58,6 @@ class GoogleDriveTree(Tree):
         for name in files:
             parent.add(f"📄 {name}", data={"name": name, "type": "file", "path": f"gdrive://file/{name}"})
 
-    def authenticate_with_browser(self):
-        """
-        Authenticate the user using OAuth 2.0 and return credentials.
-        """
-        flow = InstalledAppFlow.from_client_secrets_file(
-            'credentials.json', self.SCOPES
-        )
-        creds = flow.run_local_server(port=8080)    # Run local server for OAuth 2.0 redirect
-        return creds
-
     def fetch_google_drive_files(self, service, folder_id="root"):
         """
         Recursively fetch Google Drive files and folders.
