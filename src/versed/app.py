@@ -10,7 +10,8 @@ from pathlib import Path
 from pymilvus import MilvusClient, FieldSchema, DataType, CollectionSchema
 from contextlib import contextmanager
 
-from keys import ApiKeyHandler
+from google_auth_handler import GoogleAuthHandler
+from secret_handler import SecretHandler
 
 @contextmanager
 def milvus_client(uri):
@@ -32,17 +33,18 @@ class DocumentChat(App):
     def __init__(self, app_name) -> None:
         super().__init__()
         self.app_name = app_name
+        self.auth_handler = GoogleAuthHandler(self.app_name)
+        self.credentials = self.auth_handler.get_credentials()
         self.api_key = None
 
         self.devtools = None
 
     def on_ready(self) -> None:
-
         def select_key(key: str | None) -> None:
             if key:
                 try:
-                    key_handler = ApiKeyHandler()
-                    api_key = key_handler.load_api_key(key)
+                    secret_handler = SecretHandler()
+                    api_key = secret_handler.load_api_key(key)
                     self.api_key = key
                 except:
                     print(f"Unable to load key '{key}'.")

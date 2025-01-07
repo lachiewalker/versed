@@ -9,7 +9,7 @@ from textual.widgets import (
     Static
 )
 
-from keys import ApiKeyHandler
+from secret_handler import SecretHandler
 import asyncio
 from openai import OpenAI
 
@@ -131,8 +131,8 @@ class AddKeyScreen(ModalScreen):
                 await self.show_message("Success!", "success")
 
                 # Store the encrypted api key
-                key_handler = ApiKeyHandler(self.app.app_name)
-                key_handler.save_api_key(api_key, alias)
+                secret_handler = SecretHandler(self.app.app_name)
+                secret_handler.save_api_key(api_key, alias)
 
                 # Disable clickables
                 submit_button.disabled = True

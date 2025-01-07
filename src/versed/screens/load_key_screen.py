@@ -10,7 +10,7 @@ from textual.widgets import (
 )
 from textual.widgets.option_list import Option, Separator
 
-from keys import ApiKeyHandler
+from secret_handler import SecretHandler
 
 class LoadKeyScreen(ModalScreen):
     """Screen to select a saved API key."""
@@ -72,8 +72,8 @@ class LoadKeyScreen(ModalScreen):
 
     def __init__(self) -> None:
         super().__init__()
-        self.key_handler = ApiKeyHandler(self.app.app_name)
-        self.aliases = self.key_handler.get_aliases()
+        self.secret_handler = SecretHandler(self.app.app_name)
+        self.aliases = self.secret_handler.get_aliases()
         self.options = [Option(alias, id=f"{alias}") for alias in self.aliases]
 
     def compose(self) -> ComposeResult:
@@ -92,7 +92,7 @@ class LoadKeyScreen(ModalScreen):
 
         if selected_option is not None:
             alias = option_list.get_option_at_index(selected_option).id
-            api_key = self.key_handler.load_api_key(alias)
+            api_key = self.secret_handler.load_api_key(alias)
             
             # Transition to the next screen or perform the desired action
             self.app.pop_screen()
