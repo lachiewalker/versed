@@ -14,11 +14,10 @@ from textual.widgets import (
 from textual.widgets.directory_tree import DirEntry
 from textual.widgets.tree import TreeNode
 
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 
-class GoogleDriveTree(Tree):
+class GoogleDriveTree(DirectoryTree):
 
     SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
@@ -28,8 +27,11 @@ class GoogleDriveTree(Tree):
         credentials = self.app.credentials
         service = build('drive', 'v3', credentials=credentials)
 
-        google_drive_structure = self.fetch_google_drive_files(service)
-        self.build_tree(self.root, google_drive_structure)
+        asyncio.create_task(self.load_google_drive_files(service))
+
+    async def load_google_drive_files(self, service):
+        drive_structure = await self.fetch_google_drive_files(service)
+        self.build_tree(self.root, drive_structure)
         self.root.expand()
 
     def build_tree(self, parent: TreeNode, drive_tree: dict):
@@ -52,20 +54,23 @@ class GoogleDriveTree(Tree):
         # Add folders to the tree first
         for name, children in folders:
             node = parent.add(f"📁 {name}", expand=False)
-            node.data = {"name": name, "type": "folder", "path": f"gdrive://folder/{name}"}
+            node.data = {"name": name, "type": "folder", "path": f"gdrive://folder/{name}", "loaded": False}
             self.build_tree(node, children)
 
         for name in files:
-            parent.add(f"📄 {name}", data={"name": name, "type": "file", "path": f"gdrive://file/{name}"})
+            parent.add(f"📄 {name}", data={"name": name, "type": "file", "path": f"gdrive://file/{name}", "loaded": True})
 
-    def fetch_google_drive_files(self, service, folder_id="root"):
+    async def fetch_google_drive_files(self, service, folder_id="root"):
         """
         Recursively fetch Google Drive files and folders.
         """
-        results = service.files().list(
-            q=f"'{folder_id}' in parents and trashed = false",
-            fields="files(id, name, mimeType, parents)"
-        ).execute()
+        # results = service.files().list(
+        #     q=f"'{folder_id}' in parents and trashed = false",
+        #     fields="files(id, name, mimeType, parents)"
+        # ).execute()
+        results = await asyncio.to_thread(service.files().list,
+                                          q=f"'{folder_id}' in parents and trashed = false",
+                                          fields="files(id, name, mimeType, parents)").execute
 
         files = results.get('files', [])
         tree = {}
@@ -76,17 +81,16 @@ class GoogleDriveTree(Tree):
                 tree[file["name"]] = None
         return tree
     
-    async def on_tree_node_expanded(self, event: Tree.NodeExpanded) -> None:
-        """Update the folder icon when a folder is expanded."""
-        node = event.node
-        if node.data and node.data.get("type") == "folder":
-            node.set_label(f"📂 {node.label[2:]}")
+    async def watch_path(self):
+        self.clear_node(self.root)
 
-    async def on_tree_node_collapsed(self, event: Tree.NodeCollapsed) -> None:
-        """Update the folder icon when a folder is collapsed."""
-        node = event.node
-        if node.data and node.data.get("type") == "folder":
-            node.set_label(f"📁 {node.label[2:]}")
+    async def _loader(self):
+        pass
+
+    def _add_to_load_queue(self, node: TreeNode):
+        if node.data and not node.data.get('loaded', False):
+            node.data['loaded'] = True
+        return asyncio.sleep(0)  # Return an already completed awaitable
 
 
 class EmptyDirectoryTree(DirectoryTree):
