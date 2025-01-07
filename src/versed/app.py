@@ -85,18 +85,10 @@ class DocumentChat(App):
         )
 
     async def action_view_docs(self) -> None:
-        """Fetches documents from Milvus and displays them in a modal screen."""
-        expr = ""
-        output_fields = ["id"]
-
-        # Run the blocking Milvus query in a separate thread
-        # results = await asyncio.to_thread(
-        #     self.milvus_client.query,
-        #     collection_name=self.collection_name,
-        #     output_fields=output_fields
-        # )
+        """
+        Fetches stats about the vector collection and displays them in a modal screen.
+        """
         results = self.milvus_client.get_collection_stats(self.collection_name)
-
         self.stats = results
 
         # Push the modal screen with retrieved documents
