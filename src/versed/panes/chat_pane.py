@@ -115,7 +115,7 @@ class ChatPane(Container):
         Dynamically adjust child widget sizes when the container is resized.
         """
         def dynamic_size_input_bar():
-            input_container = self.app.query_one("#input-container")
+            input_container = self.query_one("#input-container")
             parent_width = input_container.size.width
 
             send_button_width = 6 + 1   # Width for the Send button + spacer

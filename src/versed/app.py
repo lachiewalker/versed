@@ -1,25 +1,17 @@
-from textual.app import App
-
-from screens.quit_screen import QuitScreen
-from screens.chat_screen import ChatScreen
-from screens.add_key_screen import AddKeyScreen
-from screens.load_key_screen import LoadKeyScreen
-
+import asyncio
 from platformdirs import user_data_dir
 from pathlib import Path
 from pymilvus import MilvusClient, FieldSchema, DataType, CollectionSchema
-from contextlib import contextmanager
+from textual.app import App
+
+from screens.add_key_screen import AddKeyScreen
+from screens.chat_screen import ChatScreen
+from screens.docs_screen import DocsScreen
+from screens.load_key_screen import LoadKeyScreen
+from screens.quit_screen import QuitScreen
 
 from google_auth_handler import GoogleAuthHandler
 from secret_handler import SecretHandler
-
-@contextmanager
-def milvus_client(uri):
-    client = MilvusClient(uri=uri)
-    try:
-        yield client
-    finally:
-        client.close()
 
 
 class DocumentChat(App):
@@ -27,15 +19,36 @@ class DocumentChat(App):
 
     BINDINGS = [
         ("q", "request_quit", "Quit"),
-        ("d", "toggle_dark", "Toggle dark mode")
+        ("d", "toggle_dark", "Toggle dark mode"),
+        ("v", "view_docs", "View Documents")
     ]
 
-    def __init__(self, app_name) -> None:
+    def __init__(self, app_name: str) -> None:
         super().__init__()
         self.app_name = app_name
+
+        data_dir = Path(user_data_dir(self.app_name))
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        milvus_db_path = data_dir / "milvus.db"
+        self.milvus_uri = f"{milvus_db_path}"
+
+        fields = [
+            FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
+            FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=128),
+        ]
+        schema = CollectionSchema(fields, description="A sample collection")
+        self.collection_name = "example_collection"
+
+        self.milvus_client = MilvusClient(uri=self.milvus_uri)
+        if not self.milvus_client.has_collection(collection_name=self.collection_name):
+            self.milvus_client.create_collection(collection_name=self.collection_name, schema=schema)
+
         self.auth_handler = GoogleAuthHandler(self.app_name)
         self.credentials = self.auth_handler.get_credentials()
         self.api_key = None
+
+        self.stats = None
 
         self.devtools = None
 
@@ -56,6 +69,9 @@ class DocumentChat(App):
         self.install_screen(ChatScreen(), name="chat")
         self.install_screen(AddKeyScreen(), name="add_key")
         self.install_screen(LoadKeyScreen(), name="load_key")
+        self.install_screen(DocsScreen(), name="docs")
+
+        self.title = "Versed"
 
         self.push_screen("chat")
 
@@ -68,25 +84,28 @@ class DocumentChat(App):
             "textual-dark" if self.theme == "textual-light" else "textual-light"
         )
 
+    async def action_view_docs(self) -> None:
+        """Fetches documents from Milvus and displays them in a modal screen."""
+        expr = ""
+        output_fields = ["id"]
+
+        # Run the blocking Milvus query in a separate thread
+        # results = await asyncio.to_thread(
+        #     self.milvus_client.query,
+        #     collection_name=self.collection_name,
+        #     output_fields=output_fields
+        # )
+        results = self.milvus_client.get_collection_stats(self.collection_name)
+
+        self.stats = results
+
+        # Push the modal screen with retrieved documents
+        await self.push_screen("docs")
+
 
 if __name__ == "__main__":
-    APP_NAME = "versed"
-    DATA_DIR = Path(user_data_dir(APP_NAME))
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-    milvus_db_path = DATA_DIR / "milvus.db"
-    milvus_uri = f"{milvus_db_path}"
-
-    fields = [
-        FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
-        FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=128),
-    ]
-    schema = CollectionSchema(fields, description="A sample collection")
-    collection_name = "example_collection"
-
-    with milvus_client(milvus_uri) as client:
-        if not client.has_collection(collection_name=collection_name):
-            client.create_collection(collection_name=collection_name, schema=schema)
-
-        app = DocumentChat(APP_NAME)
+    try:
+        app = DocumentChat("versed")
         app.run()
+    finally:
+        app.milvus_client.close()
