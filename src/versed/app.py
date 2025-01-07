@@ -45,7 +45,10 @@ class DocumentChat(App):
             self.milvus_client.create_collection(collection_name=self.collection_name, schema=schema)
 
         self.auth_handler = GoogleAuthHandler(self.app_name)
-        self.credentials = self.auth_handler.get_credentials()
+        try:
+            self.credentials = self.auth_handler.get_credentials()
+        except FileNotFoundError:
+            self.credentials = None
         self.api_key = None
 
         self.stats = None
