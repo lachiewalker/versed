@@ -5,7 +5,6 @@ build-backend = "hatchling.build"
 [project]
 name = "versed"
 version = "0.0.2"
-dynamic = ["version"]
 description = ''
 readme = "README.md"
 requires-python = ">=3.9"
