@@ -42,6 +42,11 @@ Source = "https://github.com/lachiewalker/versed"
 [tool.hatch.version]
 path = "pyproject.toml"
 
+[tool.hatch.build]
+artifacts = [
+  "credentials.json",
+]
+
 [tool.hatch.envs.types]
 extra-dependencies = [
   "mypy>=1.0.0",
