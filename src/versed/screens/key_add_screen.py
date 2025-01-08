@@ -1,3 +1,5 @@
+import asyncio
+from openai import OpenAI
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Vertical
@@ -8,10 +10,7 @@ from textual.widgets import (
     Label,
     Static
 )
-
 from versed.secret_handler import SecretHandler
-import asyncio
-from openai import OpenAI
 
 
 class AddKeyScreen(ModalScreen):
@@ -141,10 +140,6 @@ class AddKeyScreen(ModalScreen):
                 key_input.disabled = True
 
                 await asyncio.sleep(2)
-
-                # Load into main chat screen
-                # self.app.pop_screen()
-                # self.app.push_screen("chat")
                 self.dismiss(alias)
             else:
                 await self.show_message("API key invalid.", "error")
@@ -155,6 +150,4 @@ class AddKeyScreen(ModalScreen):
     
     @on(Button.Pressed, "#back")
     async def action_back(self) -> None:
-        # self.app.pop_screen()
-        # self.app.push_screen("load_key")
         self.dismiss(None)

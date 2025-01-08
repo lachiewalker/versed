@@ -267,6 +267,9 @@ class DirectoryPane(Container):
         text-style: bold;
     }
     """
+    def __init__(self) -> None:
+        super().__init__()
+        self.logged_in = False
 
     def compose(self) -> ComposeResult:
         with Vertical(id="pane-container"):
@@ -281,13 +284,12 @@ class DirectoryPane(Container):
             yield Button("Add to Index", id="index-button")
 
     def on_mount(self) -> None:
-        # Store references to the widgets and initialize state
         self.index_tab = self.query_one("#indexed-files", TabPane)
         self.local_tab = self.query_one("#local-files", TabPane)
         self.gdrive_tab = self.query_one("#google-drive", TabPane)
         self.index_button = self.query_one("#index-button", Button)
 
-        # self.index_button.disabled = True
+        self.index_button.disabled = True
         self.added_files = set()
         self.selected_source = None
 
@@ -303,6 +305,35 @@ class DirectoryPane(Container):
                 self.app.auth_handler.get_credentials()
                 login_button.remove()
                 google_tab.mount(GoogleDriveTree("Google Drive", id="gdrive-tree"))
+                self.logged_in = True
             except FileNotFoundError:
                 google_tab.mount(Static("Credentials file not found."))
                 login_button.disabled = True
+
+    @on(Button.Pressed, "#index-button")
+    async def action_index(self) -> None:
+        google_tab = self.query_one("#google-drive", TabPane)
+
+    @on(DirectoryTree.FileSelected, "#local-tree")
+    async def action_handle_local_file_selection(self, event: DirectoryTree.NodeSelected) -> None:
+        """Enable the button when a node is selected in the DirectoryTree."""
+        # self.query_one("#index-butt")
+        self.query_one("#index-button", Button).disabled = False
+        await asyncio.sleep(2)
+        self.query_one("#index-button", Button).disabled = True
+
+    @on(DirectoryTree.DirectorySelected, "#local-tree")
+    async def action_handle_local_dir_selection(self, event: DirectoryTree.NodeSelected) -> None:
+        """Enable the button when a node is selected in the DirectoryTree."""
+        # self.query_one("#index-butt")
+        self.query_one("#index-button", Button).disabled = False
+        await asyncio.sleep(2)
+        self.query_one("#index-button", Button).disabled = True
+
+    @on(GoogleDriveTree.NodeSelected, "#gdrive-tree")
+    async def action_handle_google_selection(self, event: DirectoryTree.NodeSelected) -> None:
+        """Enable the button when a node is selected in the DirectoryTree."""
+        self.query_one("#index-button", Button).disabled = False
+        node_type = "Directory" if event.node._allow_expand else "File"
+        await asyncio.sleep(2)
+        self.query_one("#index-button", Button).disabled = True

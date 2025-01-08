@@ -4,10 +4,10 @@ from pathlib import Path
 from pymilvus import MilvusClient, FieldSchema, DataType, CollectionSchema
 from textual.app import App
 
-from versed.screens.add_key_screen import AddKeyScreen
+from versed.screens.key_add_screen import AddKeyScreen
 from versed.screens.chat_screen import ChatScreen
 from versed.screens.docs_screen import DocsScreen
-from versed.screens.load_key_screen import LoadKeyScreen
+from versed.screens.key_load_screen import LoadKeyScreen
 from versed.screens.quit_screen import QuitScreen
 
 from versed.google_auth_handler import GoogleAuthHandler
