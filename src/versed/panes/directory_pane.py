@@ -1,5 +1,7 @@
 import asyncio
 from pathlib import Path
+from rich.style import Style
+from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
 from textual.await_complete import AwaitComplete
@@ -13,7 +15,7 @@ from textual.widgets import (
     Tree
 )
 from textual.widgets.directory_tree import DirEntry
-from textual.widgets.tree import TreeNode
+from textual.widgets._tree import TOGGLE_STYLE, TreeNode
 from typing import ClassVar
 
 from googleapiclient.discovery import build
@@ -114,7 +116,7 @@ class GoogleDriveTree(Tree):
             self.build_tree(node, children)
 
         for name in files:
-            parent.add(f"{name}", data={"name": name, "type": "file", "path": f"gdrive://file/{name}"})
+            parent.add(f"{name}", data={"name": name, "type": "file", "path": f"gdrive://file/{name}"}, allow_expand=False)
 
     def fetch_google_drive_files(self, service, folder_id="root"):
         """
@@ -133,6 +135,56 @@ class GoogleDriveTree(Tree):
             else:
                 tree[file["name"]] = None
         return tree
+    
+    def render_label(self, node: TreeNode[DirEntry], base_style: Style, style: Style) -> Text:
+        """Render a label for the given node.
+
+        Args:
+            node: A tree node.
+            base_style: The base style of the widget.
+            style: The additional style for the label.
+
+        Returns:
+            A Rich Text object containing the label.
+        """
+        node_label = node._label.copy()
+        node_label.stylize(style)
+
+        # If the tree isn't mounted yet we can't use component classes to stylize
+        # the label fully, so we return early.
+        if not self.is_mounted:
+            return node_label
+
+        if node._allow_expand:
+            prefix = (
+                self.ICON_NODE_EXPANDED if node.is_expanded else self.ICON_NODE,
+                base_style + TOGGLE_STYLE,
+            )
+            node_label.stylize_before(
+                self.get_component_rich_style("directory-tree--folder", partial=True)
+            )
+        else:
+            prefix = (
+                self.ICON_FILE,
+                base_style,
+            )
+            node_label.stylize_before(
+                self.get_component_rich_style("directory-tree--file", partial=True),
+            )
+            node_label.highlight_regex(
+                r"\..+$",
+                self.get_component_rich_style(
+                    "directory-tree--extension", partial=True
+                ),
+            )
+
+        if node_label.plain.startswith("."):
+            node_label.stylize_before(
+                self.get_component_rich_style("directory-tree--hidden")
+            )
+
+        text = Text.assemble(prefix, node_label)
+        return text
 
 
 class EmptyDirectoryTree(DirectoryTree):
