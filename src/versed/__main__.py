@@ -1,7 +1,8 @@
 from app import DocumentChat
 
-try:
-    app = DocumentChat("versed")
-    app.run()
-finally:
-    app.milvus_client.close()
+def cli():
+    try:
+        app = DocumentChat("versed")
+        app.run()
+    finally:
+        app.milvus_client.close()
