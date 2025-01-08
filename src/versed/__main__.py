@@ -1,4 +1,4 @@
-from app import DocumentChat
+from versed.app import DocumentChat
 
 def cli():
     try:

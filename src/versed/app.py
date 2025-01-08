@@ -4,14 +4,14 @@ from pathlib import Path
 from pymilvus import MilvusClient, FieldSchema, DataType, CollectionSchema
 from textual.app import App
 
-from screens.add_key_screen import AddKeyScreen
-from screens.chat_screen import ChatScreen
-from screens.docs_screen import DocsScreen
-from screens.load_key_screen import LoadKeyScreen
-from screens.quit_screen import QuitScreen
+from versed.screens.add_key_screen import AddKeyScreen
+from versed.screens.chat_screen import ChatScreen
+from versed.screens.docs_screen import DocsScreen
+from versed.screens.load_key_screen import LoadKeyScreen
+from versed.screens.quit_screen import QuitScreen
 
-from google_auth_handler import GoogleAuthHandler
-from secret_handler import SecretHandler
+from versed.google_auth_handler import GoogleAuthHandler
+from versed.secret_handler import SecretHandler
 
 
 class DocumentChat(App):
@@ -45,10 +45,7 @@ class DocumentChat(App):
             self.milvus_client.create_collection(collection_name=self.collection_name, schema=schema)
 
         self.auth_handler = GoogleAuthHandler(self.app_name)
-        try:
-            self.credentials = self.auth_handler.get_credentials()
-        except FileNotFoundError:
-            self.credentials = None
+        self.credentials = self.auth_handler.fetch_credentials()
         self.api_key = None
 
         self.stats = None

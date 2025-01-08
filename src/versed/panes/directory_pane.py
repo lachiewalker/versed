@@ -14,7 +14,7 @@ from textual.widgets import (
 )
 from textual.widgets.directory_tree import DirEntry
 from textual.widgets.tree import TreeNode
-from typing import TYPE_CHECKING, Callable, ClassVar, Iterable, Iterator
+from typing import ClassVar
 
 from googleapiclient.discovery import build
 
@@ -26,7 +26,6 @@ class GoogleDriveTree(Tree):
     ICON_NODE_EXPANDED = "📂 "
     ICON_NODE = "📁 "
     ICON_FILE = "📄 "
-    """Unicode 'icon' to represent a file."""
 
     COMPONENT_CLASSES: ClassVar[set[str]] = {
         "directory-tree--extension",
@@ -41,8 +40,6 @@ class GoogleDriveTree(Tree):
     | `directory-tree--file` | Target files in the directory structure. |
     | `directory-tree--folder` | Target folders in the directory structure. |
     | `directory-tree--hidden` | Target hidden items in the directory structure. |
-
-    See also the [component classes for `Tree`][textual.widgets.Tree.COMPONENT_CLASSES].
     """
 
     DEFAULT_CSS = """
@@ -112,12 +109,12 @@ class GoogleDriveTree(Tree):
 
         # Add folders to the tree first
         for name, children in folders:
-            node = parent.add(f"📁 {name}", expand=False)
+            node = parent.add(f"{name}", expand=False)
             node.data = {"name": name, "type": "folder", "path": f"gdrive://folder/{name}"}
             self.build_tree(node, children)
 
         for name in files:
-            parent.add(f"📄 {name}", data={"name": name, "type": "file", "path": f"gdrive://file/{name}"})
+            parent.add(f"{name}", data={"name": name, "type": "file", "path": f"gdrive://file/{name}"})
 
     def fetch_google_drive_files(self, service, folder_id="root"):
         """
@@ -136,18 +133,6 @@ class GoogleDriveTree(Tree):
             else:
                 tree[file["name"]] = None
         return tree
-    
-    async def on_tree_node_expanded(self, event: Tree.NodeExpanded) -> None:
-        """Update the folder icon when a folder is expanded."""
-        node = event.node
-        if node.data and node.data.get("type") == "folder":
-            node.set_label(f"📂 {node.label[2:]}")
-
-    async def on_tree_node_collapsed(self, event: Tree.NodeCollapsed) -> None:
-        """Update the folder icon when a folder is collapsed."""
-        node = event.node
-        if node.data and node.data.get("type") == "folder":
-            node.set_label(f"📁 {node.label[2:]}")
 
 
 class EmptyDirectoryTree(DirectoryTree):
@@ -262,6 +247,10 @@ class DirectoryPane(Container):
             login_button.remove()
             google_tab.mount(GoogleDriveTree("Google Drive", id="gdrive-tree"))
         else:
-            google_tab.mount(Static("Credentials file not found."))
-            login_button.disabled = True
-
+            try:
+                self.app.auth_handler.get_credentials()
+                login_button.remove()
+                google_tab.mount(GoogleDriveTree("Google Drive", id="gdrive-tree"))
+            except FileNotFoundError:
+                google_tab.mount(Static("Credentials file not found."))
+                login_button.disabled = True

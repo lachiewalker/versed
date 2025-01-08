@@ -6,8 +6,8 @@ from textual.widgets import (
     Header
 )
 
-from panes.chat_pane import ChatPane
-from panes.directory_pane import DirectoryPane
+from versed.panes.chat_pane import ChatPane
+from versed.panes.directory_pane import DirectoryPane
 
 
 class Canvas(Container):

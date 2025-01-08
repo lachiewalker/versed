@@ -10,7 +10,7 @@ from textual.widgets import (
 )
 from textual.widgets.option_list import Option, Separator
 
-from secret_handler import SecretHandler
+from versed.secret_handler import SecretHandler
 
 class LoadKeyScreen(ModalScreen):
     """Screen to select a saved API key."""

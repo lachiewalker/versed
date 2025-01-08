@@ -4,7 +4,7 @@ from google.oauth2.credentials import Credentials
 import json
 from pathlib import Path
 
-from secret_handler import SecretHandler
+from versed.secret_handler import SecretHandler
 
 class GoogleAuthHandler:
 
@@ -16,9 +16,9 @@ class GoogleAuthHandler:
         self.port = 19536
         self.secret_handler = SecretHandler(self.app_name)
 
-    def get_credentials(self) -> Credentials:
+    def fetch_credentials(self) -> Credentials | None:
         """
-        Get or refresh Google API credentials.
+        Get or refresh stored Google API credentials.
 
         Returns:
             Credentials object.
@@ -38,9 +38,12 @@ class GoogleAuthHandler:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
 
-        except FileNotFoundError:
-            pass
+            return creds
 
+        except FileNotFoundError:
+            return None     
+    
+    def get_credentials(self) -> Credentials:
         # Check for the existence of credentials.json before authenticating
         if not Path(GoogleAuthHandler.CREDENTIALS_FILE).exists():
             raise FileNotFoundError(f"Required file '{GoogleAuthHandler.CREDENTIALS_FILE}' not found.")
@@ -50,7 +53,7 @@ class GoogleAuthHandler:
 
         # Save the credentials
         json_creds = creds.to_json()
-        self.secret_handler.save_google_credential(json_creds)         
+        self.secret_handler.save_google_credential(json_creds) 
 
         return creds
         

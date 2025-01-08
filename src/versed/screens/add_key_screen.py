@@ -9,7 +9,7 @@ from textual.widgets import (
     Static
 )
 
-from secret_handler import SecretHandler
+from versed.secret_handler import SecretHandler
 import asyncio
 from openai import OpenAI
 
