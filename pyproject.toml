@@ -39,6 +39,9 @@ Documentation = "https://github.com/lachiewalker/versed#readme"
 Issues = "https://github.com/lachiewalker/versed/issues"
 Source = "https://github.com/lachiewalker/versed"
 
+[project.scripts]
+versed = "my_app.cli:main"
+
 [tool.hatch.version]
 path = "pyproject.toml"
 
