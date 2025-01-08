@@ -11,3 +11,5 @@ build/
 # Cache
 **/__pycache__
 **/*.pyc
+
+credentials.json
