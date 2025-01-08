@@ -143,8 +143,9 @@ class AddKeyScreen(ModalScreen):
                 await asyncio.sleep(2)
 
                 # Load into main chat screen
-                self.app.pop_screen()
-                self.app.push_screen("chat")
+                # self.app.pop_screen()
+                # self.app.push_screen("chat")
+                self.dismiss(alias)
             else:
                 await self.show_message("API key invalid.", "error")
                 indicator = self.query_one("#key_input", Input)
@@ -154,5 +155,6 @@ class AddKeyScreen(ModalScreen):
     
     @on(Button.Pressed, "#back")
     async def action_back(self) -> None:
-        self.app.pop_screen()
-        self.app.push_screen("load_key")
+        # self.app.pop_screen()
+        # self.app.push_screen("load_key")
+        self.dismiss(None)

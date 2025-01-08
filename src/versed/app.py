@@ -56,11 +56,11 @@ class DocumentChat(App):
         def select_key(key: str | None) -> None:
             if key:
                 try:
-                    secret_handler = SecretHandler()
+                    secret_handler = SecretHandler(self.app_name)
                     api_key = secret_handler.load_api_key(key)
-                    self.api_key = key
+                    self.api_key = api_key
                 except:
-                    print(f"Unable to load key '{key}'.")
+                    self.log(f"Unable to load key '{key}'.")
 
         self.push_screen("load_key", select_key)
 

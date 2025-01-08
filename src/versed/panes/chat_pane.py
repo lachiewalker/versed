@@ -93,7 +93,13 @@ class ChatPane(Container):
 
     def __init__(self) -> None:
         super().__init__()
-        self.client = OpenAI(api_key=self.app.api_key)
+        self.client = self.instantiate_client()
+
+    def instantiate_client(self) -> OpenAI | None:
+        if self.app.api_key:
+            self.client = OpenAI(api_key=self.app.api_key)
+        else:
+            self.client = None
     
     def compose(self) -> ComposeResult:
         # Top 80% container: Scrollable chat messages
@@ -127,6 +133,11 @@ class ChatPane(Container):
 
     @on(Button.Pressed, "#send")
     async def action_send_message(self) -> None:
+        if not self.client:
+            client = self.instantiate_client()
+            if not client:
+                return
+            
         input_field = self.query_one("#text-area")
         user_query = input_field.text
         if user_query:

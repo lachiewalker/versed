@@ -92,20 +92,25 @@ class LoadKeyScreen(ModalScreen):
 
         if selected_option is not None:
             alias = option_list.get_option_at_index(selected_option).id
-            api_key = self.secret_handler.load_api_key(alias)
-            
-            # Transition to the next screen or perform the desired action
-            self.app.pop_screen()
-            self.app.push_screen("chat")
+            self.dismiss(alias)
         else:
             container = self.query_one("#dialog", Vertical)
             container.mount(Static("No API key selected.", classes="message"))
 
     @on(Button.Pressed, "#add_new_key")
     async def action_add_new(self) -> None:
+        def add_key(key: str | None) -> None:
+            if key:
+                try:
+                    secret_handler = SecretHandler(self.app.app_name)
+                    api_key = secret_handler.load_api_key(key)
+                    self.api_key = api_key
+                    self.dismiss(key)
+                except:
+                    self.log(f"Unable to load key '{key}'.")
+
         # Transition to the screen for adding a new API key
-        self.app.pop_screen()
-        self.app.push_screen("add_key")
+        self.app.push_screen("add_key", add_key)
 
     async def on_option_list_option_selected(
         self, event: OptionList.OptionSelected
