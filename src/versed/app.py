@@ -1,17 +1,19 @@
-import asyncio
+import json
 from platformdirs import user_data_dir
 from pathlib import Path
-from pymilvus import MilvusClient, FieldSchema, DataType, CollectionSchema
 from textual.app import App
 
-from versed.screens.key_add_screen import AddKeyScreen
 from versed.screens.chat_screen import ChatScreen
+from versed.screens.collection_add_screen import AddCollectionScreen
+from versed.screens.collection_select_screen import SelectCollectionScreen
 from versed.screens.docs_screen import DocsScreen
+from versed.screens.key_add_screen import AddKeyScreen
 from versed.screens.key_load_screen import LoadKeyScreen
 from versed.screens.quit_screen import QuitScreen
 
 from versed.google_auth_handler import GoogleAuthHandler
 from versed.secret_handler import SecretHandler
+from versed.vector_store import VectorStore
 
 
 class DocumentChat(App):
@@ -23,6 +25,8 @@ class DocumentChat(App):
         ("v", "view_docs", "View Documents")
     ]
 
+    DEFAULT_COLLECTION_NAME = "DefaultCollection"
+
     def __init__(self, app_name: str) -> None:
         super().__init__()
         self.app_name = app_name
@@ -30,24 +34,15 @@ class DocumentChat(App):
         data_dir = Path(user_data_dir(self.app_name))
         data_dir.mkdir(parents=True, exist_ok=True)
 
-        milvus_db_path = data_dir / "milvus.db"
-        self.milvus_uri = f"{milvus_db_path}"
-
-        fields = [
-            FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
-            FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=128),
-        ]
-        schema = CollectionSchema(fields, description="A sample collection")
-        self.collection_name = "example_collection"
-
-        self.milvus_client = MilvusClient(uri=self.milvus_uri)
-        if not self.milvus_client.has_collection(collection_name=self.collection_name):
-            self.milvus_client.create_collection(collection_name=self.collection_name, schema=schema)
-
         self.auth_handler = GoogleAuthHandler(self.app_name)
         self.credentials = self.auth_handler.fetch_credentials()
         self.api_key = None
 
+        self.vector_store = VectorStore(
+            data_dir=data_dir,
+            default_collection_name=DocumentChat.DEFAULT_COLLECTION_NAME
+        )
+        self.collection_names = self.vector_store.get_collection_names()
         self.stats = None
 
         self.devtools = None
@@ -69,11 +64,16 @@ class DocumentChat(App):
         self.install_screen(ChatScreen(), name="chat")
         self.install_screen(AddKeyScreen(), name="add_key")
         self.install_screen(LoadKeyScreen(), name="load_key")
+        self.install_screen(AddCollectionScreen(), name="add_collection")
+        self.install_screen(SelectCollectionScreen(), name="select_collection")
         self.install_screen(DocsScreen(), name="docs")
 
         self.title = "Versed"
 
         self.push_screen("chat")
+
+    def on_vector_store_update(self):
+        self.collection_names = self.vector_store.get_collection_names()
 
     def action_request_quit(self) -> None:
         self.push_screen(QuitScreen())
@@ -88,7 +88,15 @@ class DocumentChat(App):
         """
         Fetches stats about the vector collection and displays them in a modal screen.
         """
-        results = self.milvus_client.get_collection_stats(self.collection_name)
+        if not self.vector_store.get_collection_names():
+            results = { "collections": "No collections found." }
+        else:
+            if self.vector_store.milvus_client.has_collection(collection_name=DocumentChat.DEFAULT_COLLECTION_NAME):
+                results = self.vector_store.milvus_client.get_collection_stats(DocumentChat.DEFAULT_COLLECTION_NAME)
+            else:
+                collection_name = self.vector_store.get_collection_names()[0]
+                results = self.vector_store.get_collection_stats(collection_name)
+
         self.stats = results
 
         # Push the modal screen with retrieved documents

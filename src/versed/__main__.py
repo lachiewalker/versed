@@ -5,4 +5,4 @@ def cli():
         app = DocumentChat("versed")
         app.run()
     finally:
-        app.milvus_client.close()
+        app.vector_store.close_client()

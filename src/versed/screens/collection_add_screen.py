@@ -1,4 +1,3 @@
-import asyncio
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Vertical
@@ -11,11 +10,11 @@ from textual.widgets import (
 )
 
 
-class AddProjectScreen(ModalScreen):
-    """Screen with a dialog to quit."""
+class AddCollectionScreen(ModalScreen):
+    """Screen to add a new collection."""
 
     DEFAULT_CSS = """
-    AddProjectScreen {
+    AddCollectionScreen {
         align: center middle;
     }
 
@@ -72,15 +71,15 @@ class AddProjectScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         yield Vertical(
-            Label("Project Name", id="name_label"),
+            Label("Collection Name", id="name_label"),
             Input(
-                placeholder="Project name",
-                restrict=r"[a-zA-Z0-9_-]*",
+                placeholder="Collection name",
+                restrict=r"[a-zA-Z0-9_]*",
                 max_length=64,
                 id="name_input"
             ),
             Button("Submit", variant="success", id="submit"),
-            Button("Back to Project Select", variant="primary", id="back"),
+            Button("Back to Collection Select", variant="primary", id="back"),
             id="dialog",
         )
 
@@ -92,24 +91,28 @@ class AddProjectScreen(ModalScreen):
 
     @on(Button.Pressed, "#submit")
     async def action_submit(self) -> None:
-        project_name = self.query_one("#name_input", Input).value
+        collection_name = self.query_one("#name_input", Input).value
 
-        async def handle_submit() -> None:
-            submit_button = self.query_one("#submit", Button)
-            back_button = self.query_one("#back", Button)
-            name_input = self.query_one("#name_input", Input)
+        submit_button = self.query_one("#submit", Button)
+        back_button = self.query_one("#back", Button)
+        name_input = self.query_one("#name_input", Input)
 
-            await self.show_message("Project Added", "success")
+        self.app.vector_store.add_collection(collection_name, callback=self.app.on_vector_store_update)
 
-            # Disable clickables
-            submit_button.disabled = True
-            back_button.disabled = True
-            name_input.disabled = True
+        chat_screen = self.app.get_screen("chat")
+        if chat_screen is not None:
+            collection_selector = chat_screen.query_one("#collection-selector")
+        collection_selector.add_option(
+            (collection_name, collection_name, True)
+        )
+        await self.show_message("Collection Added", "success")
 
-            await asyncio.sleep(1)
-            self.dismiss(project_name)
+        # Disable clickables
+        submit_button.disabled = True
+        back_button.disabled = True
+        name_input.disabled = True
 
-        asyncio.create_task(handle_submit())
+        self.dismiss(collection_name)
     
     @on(Button.Pressed, "#back")
     async def action_back(self) -> None:

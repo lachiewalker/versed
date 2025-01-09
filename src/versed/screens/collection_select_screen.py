@@ -10,11 +10,11 @@ from textual.widgets import (
 )
 from textual.widgets.option_list import Option
 
-class LoadProjectScreen(ModalScreen):
-    """Screen to select a saved API key."""
+class SelectCollectionScreen(ModalScreen):
+    """Screen to select an existing collection."""
 
     DEFAULT_CSS = """
-    LoadProjectScreen {
+    SelectCollectionScreen {
         align: center middle;
     }
 
@@ -50,14 +50,14 @@ class LoadProjectScreen(ModalScreen):
         text-style: bold;
     }
 
-    #add_new_project {
+    #add_new_collection {
         width: 100%;
         margin-left: 1;
         margin-right: 1;
         box-sizing: border-box;
         content-align: center middle;
     }
-    #add_new_project:focus {
+    #add_new_collection:focus {
         text-style: bold;
     }
 
@@ -70,37 +70,38 @@ class LoadProjectScreen(ModalScreen):
 
     def __init__(self) -> None:
         super().__init__()
-        self.options = [Option(alias, id=f"{alias}") for alias in self.aliases]
+        self.options = [Option(name, id=f"{name}") for name in self.app.collection_names]
 
     def compose(self) -> ComposeResult:
         yield Vertical(
-            Label("Select a Project", id="select_label"),
-            OptionList(*self.options, id="project_option_list"),
+            Label("Select a Collection", id="select_label"),
+            OptionList(*self.options, id="collection_option_list"),
             Button("Use Selected", variant="success", id="use_selected"),
-            Button("Add a New Project", variant="primary", id="add_new_project"),
+            Button("Add a New Collection", variant="primary", id="add_new_collection"),
             id="dialog",
         )
 
     @on(Button.Pressed, "#use_selected")
     async def action_use_selected(self) -> None:
-        option_list = self.query_one("#project_option_list", OptionList)
+        option_list = self.query_one("#collection_option_list", OptionList)
         selected_option = option_list.highlighted
 
         if selected_option is not None:
-            project = option_list.get_option_at_index(selected_option).id
-            self.dismiss(project)
+            collection_name = option_list.get_option_at_index(selected_option).id
+            self.dismiss(collection_name)
         else:
             container = self.query_one("#dialog", Vertical)
-            container.mount(Static("No project selected.", classes="message"))
+            container.mount(Static("No collection selected.", classes="message"))
 
-    @on(Button.Pressed, "#add_new_project")
+    @on(Button.Pressed, "#add_new_collection")
     async def action_add_new(self) -> None:
-        def add_project(project_name: str | None) -> None:
-            if project_name:
-                self.dismiss(project_name)
+        def add_collection(collection_name: str | None) -> None:
+            if collection_name:
+                # Associate file with collection
+                self.dismiss(collection_name)
 
-        # Transition to the screen for adding a new API key
-        self.app.push_screen("add_project", add_project)
+        # Transition to the screen for adding a new collection
+        self.app.push_screen("add_collection", add_collection)
 
     async def on_option_list_option_selected(
         self, event: OptionList.OptionSelected

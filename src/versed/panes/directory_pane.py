@@ -6,9 +6,11 @@ from textual import on
 from textual.app import ComposeResult
 from textual.await_complete import AwaitComplete
 from textual.containers import Container, Vertical
+from textual.css.query import NoMatches
 from textual.widgets import (
     Button,
     DirectoryTree,
+    SelectionList,
     Static,
     TabPane,
     TabbedContent,
@@ -270,12 +272,19 @@ class DirectoryPane(Container):
     def __init__(self) -> None:
         super().__init__()
         self.logged_in = False
+        self.selected = None
 
     def compose(self) -> ComposeResult:
         with Vertical(id="pane-container"):
             with TabbedContent(id="tabbed-content"):
                 with TabPane("Indexed Files", id="indexed-files"):
-                    yield EmptyDirectoryTree("", id="index-tree")
+                    # yield EmptyDirectoryTree("", id="index-tree")
+                    collection_names = self.app.collection_names
+                    selections = [(name, name, False) for name in collection_names]
+                    yield SelectionList[str](  
+                        *selections,
+                        id="collection-selector"
+                    )
                 with TabPane("Local Files", id="local-files"):
                     yield DirectoryTree(".", id="local-tree")
                 with TabPane("Google Drive", id="google-drive"):
@@ -291,7 +300,16 @@ class DirectoryPane(Container):
 
         self.index_button.disabled = True
         self.added_files = set()
-        self.selected_source = None
+
+    def node_is_dir(self, node) -> bool:
+        return True if node._allow_expand else False
+
+    def add_to_collection(self, node, collection):
+        # Check if node is file or dir
+        if self.node_is_dir(node):
+            pass
+        else:
+            pass
 
     @on(Button.Pressed, "#log-in")
     async def action_log_in(self) -> None:
@@ -312,28 +330,43 @@ class DirectoryPane(Container):
 
     @on(Button.Pressed, "#index-button")
     async def action_index(self) -> None:
-        google_tab = self.query_one("#google-drive", TabPane)
+        def add_to_collection(collection_name: str | None) -> None:
+            if collection_name:
+                self.add_to_collection(self.selected, collection_name)
+
+        # Transition to the screen for adding a new collection
+        collection_name = self.app.push_screen("select_collection", add_to_collection)
+
+        self.add_to_collection(self.selected, collection_name)
 
     @on(DirectoryTree.FileSelected, "#local-tree")
     async def action_handle_local_file_selection(self, event: DirectoryTree.NodeSelected) -> None:
         """Enable the button when a node is selected in the DirectoryTree."""
-        # self.query_one("#index-butt")
         self.query_one("#index-button", Button).disabled = False
-        await asyncio.sleep(2)
-        self.query_one("#index-button", Button).disabled = True
+        self.selected = event.node
 
     @on(DirectoryTree.DirectorySelected, "#local-tree")
     async def action_handle_local_dir_selection(self, event: DirectoryTree.NodeSelected) -> None:
         """Enable the button when a node is selected in the DirectoryTree."""
-        # self.query_one("#index-butt")
         self.query_one("#index-button", Button).disabled = False
-        await asyncio.sleep(2)
-        self.query_one("#index-button", Button).disabled = True
+        self.selected = event.node
 
     @on(GoogleDriveTree.NodeSelected, "#gdrive-tree")
     async def action_handle_google_selection(self, event: DirectoryTree.NodeSelected) -> None:
         """Enable the button when a node is selected in the DirectoryTree."""
         self.query_one("#index-button", Button).disabled = False
-        node_type = "Directory" if event.node._allow_expand else "File"
-        await asyncio.sleep(2)
+        self.selected = event.node
+        is_dir = self.node_is_dir(event.node)
+
+    @on(TabbedContent.TabActivated)
+    async def reset_button_on_tab_show(self, event: TabbedContent.TabActivated) -> None:
+        """Disable the button when the Local Files tab is shown."""
         self.query_one("#index-button", Button).disabled = True
+
+        tab_pane = event.pane
+        if tab_pane.id in ["local-files", "google-drive"]:
+            try:
+                tree = tab_pane.query_one(Tree)
+                tree.move_cursor(None)
+            except NoMatches:
+                pass
