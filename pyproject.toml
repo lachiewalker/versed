@@ -32,7 +32,9 @@ dependencies = [
     "platformdirs",
     "keyring",
     "cryptography",
-    "openai"
+    "openai",
+    "python-docx",
+    "langchain-text-splitters"
 ]
 
 [project.urls]

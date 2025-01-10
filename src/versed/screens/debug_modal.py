@@ -5,10 +5,10 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
-class DocsScreen(ModalScreen):
+class DebugScreen(ModalScreen):
 
     DEFAULT_CSS = """
-    DocsScreen {
+    DebugScreen {
         align: center middle;
     }
 
@@ -36,16 +36,13 @@ class DocsScreen(ModalScreen):
     }
     """
 
-    def __init__(self, collection_name):
+    def __init__(self, content):
         super().__init__()
-        self.collection_name = collection_name
+        self.content = content
 
     def compose(self) -> ComposeResult:
-        # Display each document on a new line.
-        stats = self.app.vector_store.get_collection_stats(self.collection_name)
-        content = json.dumps(stats) if stats else "No documents found."
         yield Vertical(
-            Static(content),
+            Static(self.content),
             Button("Close", variant="primary", id="back"),
             id="dialog"
         )

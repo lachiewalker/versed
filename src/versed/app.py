@@ -6,7 +6,6 @@ from textual.app import App
 from versed.screens.chat_screen import ChatScreen
 from versed.screens.collection_add_screen import AddCollectionScreen
 from versed.screens.collection_select_screen import SelectCollectionScreen
-from versed.screens.docs_screen import DocsScreen
 from versed.screens.key_add_screen import AddKeyScreen
 from versed.screens.key_load_screen import LoadKeyScreen
 from versed.screens.quit_screen import QuitScreen
@@ -21,8 +20,7 @@ class DocumentChat(App):
 
     BINDINGS = [
         ("q", "request_quit", "Quit"),
-        ("d", "toggle_dark", "Toggle dark mode"),
-        ("v", "view_docs", "View Documents")
+        ("d", "toggle_dark", "Toggle dark mode")
     ]
 
     DEFAULT_COLLECTION_NAME = "DefaultCollection"
@@ -39,8 +37,10 @@ class DocumentChat(App):
         self.api_key = None
 
         self.vector_store = VectorStore(
+            app=self,
             data_dir=data_dir,
-            default_collection_name=DocumentChat.DEFAULT_COLLECTION_NAME
+            default_collection_name=DocumentChat.DEFAULT_COLLECTION_NAME,
+            google_credentials=self.credentials
         )
         self.collection_names = self.vector_store.get_collection_names()
         self.stats = None
@@ -54,6 +54,7 @@ class DocumentChat(App):
                     secret_handler = SecretHandler(self.app_name)
                     api_key = secret_handler.load_api_key(key)
                     self.api_key = api_key
+                    self.vector_store.initialise_openai_client(api_key)
                 except:
                     self.log(f"Unable to load key '{key}'.")
 
@@ -66,7 +67,6 @@ class DocumentChat(App):
         self.install_screen(LoadKeyScreen(), name="load_key")
         self.install_screen(AddCollectionScreen(), name="add_collection")
         self.install_screen(SelectCollectionScreen(), name="select_collection")
-        self.install_screen(DocsScreen(), name="docs")
 
         self.title = "Versed"
 
@@ -83,24 +83,6 @@ class DocumentChat(App):
         self.theme = (
             "textual-dark" if self.theme == "textual-light" else "textual-light"
         )
-
-    async def action_view_docs(self) -> None:
-        """
-        Fetches stats about the vector collection and displays them in a modal screen.
-        """
-        if not self.vector_store.get_collection_names():
-            results = { "collections": "No collections found." }
-        else:
-            if self.vector_store.milvus_client.has_collection(collection_name=DocumentChat.DEFAULT_COLLECTION_NAME):
-                results = self.vector_store.milvus_client.get_collection_stats(DocumentChat.DEFAULT_COLLECTION_NAME)
-            else:
-                collection_name = self.vector_store.get_collection_names()[0]
-                results = self.vector_store.get_collection_stats(collection_name)
-
-        self.stats = results
-
-        # Push the modal screen with retrieved documents
-        await self.push_screen("docs")
 
 
 if __name__ == "__main__":

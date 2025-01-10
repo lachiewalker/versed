@@ -1,4 +1,5 @@
 import asyncio
+from googleapiclient.discovery import build
 from pathlib import Path
 from rich.style import Style
 from rich.text import Text
@@ -19,8 +20,8 @@ from textual.widgets import (
 from textual.widgets.directory_tree import DirEntry
 from textual.widgets._tree import TOGGLE_STYLE, TreeNode
 from typing import ClassVar
-
-from googleapiclient.discovery import build
+from versed.screens.docs_screen import DocsScreen
+from versed.screens.debug_modal import DebugScreen
 
 
 class GoogleDriveTree(Tree):
@@ -101,24 +102,38 @@ class GoogleDriveTree(Tree):
         folders = []
         files = []
 
-        for name, children in drive_tree.items():
-            if children:
-                folders.append((name, children))
+        for name, data in drive_tree.items():
+            if data.get("type") == "folder":
+                folders.append((name, data))
             else:
-                files.append(name)
+                files.append((name, data))
 
         # Sort folders and files alphabetically
         folders.sort(key=lambda x: x[0].lower())
-        files.sort(key=lambda x: x.lower())
+        files.sort(key=lambda x: x[0].lower())
 
         # Add folders to the tree first
-        for name, children in folders:
+        for name, data in folders:
             node = parent.add(f"{name}", expand=False)
-            node.data = {"name": name, "type": "folder", "path": f"gdrive://folder/{name}"}
-            self.build_tree(node, children)
+            node.data = {
+                "name": name,
+                "type": "folder",
+                "id": data["id"],
+                "path": f"gdrive://folder/{data['id']}"
+            }
+            self.build_tree(node, data["children"])
 
-        for name in files:
-            parent.add(f"{name}", data={"name": name, "type": "file", "path": f"gdrive://file/{name}"}, allow_expand=False)
+        for name, data in files:
+            parent.add(
+                f"{name}",
+                data={
+                    "name": name,
+                    "type": "file",
+                    "id": data["id"],
+                    "path": f"gdrive://file/{data['id']}"
+                },
+                allow_expand=False,
+            )  
 
     def fetch_google_drive_files(self, service, folder_id="root"):
         """
@@ -132,11 +147,72 @@ class GoogleDriveTree(Tree):
         files = results.get('files', [])
         tree = {}
         for file in files:
-            if file["mimeType"] == "application/vnd.google-apps.folder":
-                tree[file["name"]] = self.fetch_google_drive_files(service, file["id"])
+            mime_type = file["mimeType"]
+            file_name = file["name"]
+
+            # Append extension if it exists in the mapping
+            extension = self._mime_to_extension(mime_type)
+            if extension:
+                file_name += extension
+
+            if mime_type == "application/vnd.google-apps.folder":
+                # Folder handling
+                tree[file_name] = {
+                    "id": file["id"],
+                    "type": "folder",
+                    "children": self.fetch_google_drive_files(service, file["id"]),
+                }
             else:
-                tree[file["name"]] = None
+                # File handling
+                tree[file_name] = {
+                    "id": file["id"],
+                    "type": "file",
+                }
+
         return tree
+    
+    def _mime_to_extension(self, mimetype):
+        mime_to_extension = {
+            "application/vnd.google-apps.document": ".gdoc",
+            "application/vnd.google-apps.spreadsheet": ".gsheet",
+            "application/vnd.google-apps.presentation": ".gslides",
+            "application/vnd.google.colab": ".ipynb",
+            "application/vnd.google-apps.folder": "",
+            "application/pdf": ".pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+            "text/plain": ".txt",
+            "text/csv": ".csv",
+            "text/x-python": ".py",
+            "text/x-java-source": ".java",
+            "text/x-c": ".c",
+            "text/x-c++src": ".cpp",
+            "text/javascript": ".js",
+            "application/x-httpd-php": ".php",
+            "text/html": ".html",
+            "text/css": ".css",
+            "application/json": ".json",
+            "application/xml": ".xml",
+            "application/x-shellscript": ".sh",
+            "application/x-ruby": ".rb",
+            "text/markdown": ".md",
+            "application/x-perl": ".pl",
+            "application/x-lua": ".lua",
+            "text/x-go": ".go",
+            "application/x-yaml": ".yaml",
+            "application/x-tar": ".tar",
+            "application/zip": ".zip",
+            "application/x-7z-compressed": ".7z",
+            "application/x-rar-compressed": ".rar",
+            "application/gzip": ".gz",
+        }
+
+        if mimetype in mime_to_extension:
+            return mime_to_extension[mimetype]
+        else:
+            return None
+
     
     def render_label(self, node: TreeNode[DirEntry], base_style: Style, style: Style) -> Text:
         """Render a label for the given node.
@@ -223,6 +299,10 @@ class EmptyDirectoryTree(DirectoryTree):
 
 class DirectoryPane(Container):
     """Tabbed pane containing DirectoryTrees for file sources and destination index."""
+
+    BINDINGS = [
+        ("v", "view_docs", "View Documents")
+    ]
     
     DEFAULT_CSS = """
     DirectoryPane {
@@ -277,8 +357,7 @@ class DirectoryPane(Container):
     def compose(self) -> ComposeResult:
         with Vertical(id="pane-container"):
             with TabbedContent(id="tabbed-content"):
-                with TabPane("Indexed Files", id="indexed-files"):
-                    # yield EmptyDirectoryTree("", id="index-tree")
+                with TabPane("Collections", id="collections-tab"):
                     collection_names = self.app.collection_names
                     selections = [(name, name, False) for name in collection_names]
                     yield SelectionList[str](  
@@ -293,7 +372,7 @@ class DirectoryPane(Container):
             yield Button("Add to Index", id="index-button")
 
     def on_mount(self) -> None:
-        self.index_tab = self.query_one("#indexed-files", TabPane)
+        self.index_tab = self.query_one("#collections-tab", TabPane)
         self.local_tab = self.query_one("#local-files", TabPane)
         self.gdrive_tab = self.query_one("#google-drive", TabPane)
         self.index_button = self.query_one("#index-button", Button)
@@ -303,13 +382,56 @@ class DirectoryPane(Container):
 
     def node_is_dir(self, node) -> bool:
         return True if node._allow_expand else False
+    
+    def get_node_path(self, node) -> str:
+        """
+        Retrieve the path from a TreeNode, whether from a DirectoryTree or GoogleDriveTree.
+
+        Args:
+            node (TreeNode): A node from either DirectoryTree or GoogleDriveTree.
+
+        Returns:
+            str: The path of the node as a string, or None if no path exists.
+        """
+        if node and node.data:
+            if hasattr(node.data, "path"):  # Handle DirectoryTree (node.data is a DirEntry)
+                return str(node.data.path)
+            
+            elif isinstance(node.data, dict) and "path" in node.data:
+                return node.data["path"]
+        
+        return None
+    
+    def get_node_name(self, node) -> str:
+        """
+        Retrieve the path from a TreeNode, whether from a DirectoryTree or GoogleDriveTree.
+
+        Args:
+            node (TreeNode): A node from either DirectoryTree or GoogleDriveTree.
+
+        Returns:
+            str: The path of the node as a string, or None if no path exists.
+        """
+        if node and node.data:
+            if hasattr(node.data, "path"):  # Handle DirectoryTree (node.data is a DirEntry)
+                return str(node.data.path.name)
+            
+            elif isinstance(node.data, dict) and "path" in node.data:
+                return node.data["name"]
+        
+        return None
 
     def add_to_collection(self, node, collection):
-        # Check if node is file or dir
         if self.node_is_dir(node):
             pass
         else:
-            pass
+            path = self.get_node_path(node)
+            file_name = self.get_node_name(node)
+            file = {
+                "name": file_name,
+                "path": path
+            }
+            self.app.vector_store.add_files_to_collection(collection=collection, files=[file])
 
     @on(Button.Pressed, "#log-in")
     async def action_log_in(self) -> None:
@@ -330,14 +452,12 @@ class DirectoryPane(Container):
 
     @on(Button.Pressed, "#index-button")
     async def action_index(self) -> None:
-        def add_to_collection(collection_name: str | None) -> None:
+        def select_collection(collection_name: str | None) -> None:
             if collection_name:
                 self.add_to_collection(self.selected, collection_name)
 
-        # Transition to the screen for adding a new collection
-        collection_name = self.app.push_screen("select_collection", add_to_collection)
-
-        self.add_to_collection(self.selected, collection_name)
+        # Transition to the add collection screen
+        self.app.push_screen("select_collection", select_collection)
 
     @on(DirectoryTree.FileSelected, "#local-tree")
     async def action_handle_local_file_selection(self, event: DirectoryTree.NodeSelected) -> None:
@@ -356,7 +476,7 @@ class DirectoryPane(Container):
         """Enable the button when a node is selected in the DirectoryTree."""
         self.query_one("#index-button", Button).disabled = False
         self.selected = event.node
-        is_dir = self.node_is_dir(event.node)
+        # is_dir = self.node_is_dir(event.node)
 
     @on(TabbedContent.TabActivated)
     async def reset_button_on_tab_show(self, event: TabbedContent.TabActivated) -> None:
@@ -370,3 +490,16 @@ class DirectoryPane(Container):
                 tree.move_cursor(None)
             except NoMatches:
                 pass
+
+    async def action_view_docs(self) -> None:
+        """
+        Fetches stats about the vector collection and displays them in a modal screen.
+        """
+        collections_selector = self.query_one("#collection-selector")
+        selected_index = collections_selector.highlighted
+        if selected_index is not None:
+            selected_option = collections_selector.get_option_at_index(selected_index)
+            selected_collection = selected_option.value
+        
+        # Push the modal screen with retrieved documents
+        await self.app.push_screen(DocsScreen(selected_collection))
