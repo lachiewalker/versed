@@ -45,6 +45,42 @@ class DocumentChat(App):
         self.collection_names = self.vector_store.get_collection_names()
         self.stats = None
 
+        self.mimetype_extensions = {
+            "application/vnd.google-apps.document": ".gdoc",
+            "application/vnd.google-apps.spreadsheet": ".gsheet",
+            "application/vnd.google-apps.presentation": ".gslides",
+            "application/vnd.google.colab": ".ipynb",
+            "application/vnd.google-apps.folder": "",
+            "application/pdf": ".pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+            "text/plain": ".txt",
+            "text/csv": ".csv",
+            "text/x-python": ".py",
+            "text/x-java-source": ".java",
+            "text/x-c": ".c",
+            "text/x-c++src": ".cpp",
+            "text/javascript": ".js",
+            "application/x-httpd-php": ".php",
+            "text/html": ".html",
+            "text/css": ".css",
+            "application/json": ".json",
+            "application/xml": ".xml",
+            "application/x-shellscript": ".sh",
+            "application/x-ruby": ".rb",
+            "text/markdown": ".md",
+            "application/x-perl": ".pl",
+            "application/x-lua": ".lua",
+            "text/x-go": ".go",
+            "application/x-yaml": ".yaml",
+            "application/x-tar": ".tar",
+            "application/zip": ".zip",
+            "application/x-7z-compressed": ".7z",
+            "application/x-rar-compressed": ".rar",
+            "application/gzip": ".gz",
+        }
+
         self.devtools = None
 
     def on_ready(self) -> None:

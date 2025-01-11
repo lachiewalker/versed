@@ -1,15 +1,10 @@
-import io
 import json
 from typing import Dict, List
 
-from docx import Document
-from docx.text.paragraph import Paragraph
-from docx.table import Table
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from openai import OpenAI
 from pymilvus import MilvusClient, FieldSchema, DataType, CollectionSchema
+from versed.file_handler import FileHandler
 
 
 class VectorStore:
@@ -48,7 +43,6 @@ class VectorStore:
                 ]
             }
             self.update_metadata()
-
         else:
             # Load metadata
             with self.milvus_metadata_path.open("r") as file:
@@ -60,6 +54,8 @@ class VectorStore:
 
         self.openai_client = None
         self.google_credentials = google_credentials
+
+        self.file_handler = FileHandler(self.google_credentials)
 
     def initialise_openai_client(self, api_key) -> OpenAI | None:
         self.openai_client = OpenAI(api_key=self.app.api_key)
@@ -145,20 +141,8 @@ class VectorStore:
         """
         pass
 
-    def get_file_content(self, file):
-        if file["path"].startswith("gdrive://"):
-            content = self._get_google_drive_content(file)
-        else:
-            content = self._get_local_file_content(file)
-
-        return content
-
-    def _get_google_drive_content(self, file: Dict):
-        if file["path"] is "google_doc":
-            self._extract_google_doc_content()
-
-    def _get_local_file_content(self, file: Dict):
-        pass
+    def get_file_content(self, file) -> str:
+        return self.file_handler.get_file_content(file)
 
     async def chunk_file(self, file_contents: str) -> List[str]:
         """
@@ -213,60 +197,3 @@ class VectorStore:
 
     def add_chunk_to_collection(self, collection, chunk):
         pass
-
-    def _extract_txt_content(self, file_path):
-        pass
-
-    def _extract_docx_content(self, file_path):
-        doc = Document(file_path)
-
-        file_content = ""
-
-        # Iterate over all block-level elements
-        for element in doc.iter_inner_content():
-            if isinstance(element, Paragraph):
-                file_content += f"{element.text}\n\n"
-            elif isinstance(element, Table):
-                file_content += "<Table>\n"
-                for row in element.rows:
-                    file_content += "<Row>\n"
-                    for cell in row.cells:
-                        file_content += "<Cell>\n"
-                        file_content += f"{cell.text}\n"
-                        file_content += "</Cell>\n"
-                    file_content += "</Row>\n"
-                file_content += "</Table>\n\n"
-
-        from versed.screens.debug_modal import DebugScreen
-        self.app.push_screen(DebugScreen(file_content))
-
-        return file_content
-    
-    def _extract_google_doc_content(self, file_path):
-        """
-        Extract content from a Google Docs file without saving it to disk.
-        """
-        service = build('drive', 'v3', credentials=self.google_credentials)
-
-        file_id = file_path.split("/")[-1]
-
-        # Export the Google Docs file as .docx
-        request = service.files().export_media(
-            fileId=file_id,
-            mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        )
-
-        # Use an in-memory bytes buffer to store the file
-        file_stream = io.BytesIO()
-        downloader = MediaIoBaseDownload(file_stream, request)
-        done = False
-
-        while not done:
-            status, done = downloader.next_chunk()
-            # Loading bar modal?
-
-        file_stream.seek(0) # Seek to the beginning of the stream to read
-
-        # Extract the content using _extract_docx_content
-        return self._extract_docx_content(file_stream)
-

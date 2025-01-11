@@ -91,6 +91,8 @@ class GoogleDriveTree(Tree):
         credentials = self.app.credentials
         service = build('drive', 'v3', credentials=credentials)
 
+        self.mimetype_extensions = self.app.mimetype_extensions
+
         google_drive_structure = self.fetch_google_drive_files(service)
         self.build_tree(self.root, google_drive_structure)
         self.root.expand()
@@ -172,44 +174,8 @@ class GoogleDriveTree(Tree):
         return tree
     
     def _mime_to_extension(self, mimetype):
-        mime_to_extension = {
-            "application/vnd.google-apps.document": ".gdoc",
-            "application/vnd.google-apps.spreadsheet": ".gsheet",
-            "application/vnd.google-apps.presentation": ".gslides",
-            "application/vnd.google.colab": ".ipynb",
-            "application/vnd.google-apps.folder": "",
-            "application/pdf": ".pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
-            "text/plain": ".txt",
-            "text/csv": ".csv",
-            "text/x-python": ".py",
-            "text/x-java-source": ".java",
-            "text/x-c": ".c",
-            "text/x-c++src": ".cpp",
-            "text/javascript": ".js",
-            "application/x-httpd-php": ".php",
-            "text/html": ".html",
-            "text/css": ".css",
-            "application/json": ".json",
-            "application/xml": ".xml",
-            "application/x-shellscript": ".sh",
-            "application/x-ruby": ".rb",
-            "text/markdown": ".md",
-            "application/x-perl": ".pl",
-            "application/x-lua": ".lua",
-            "text/x-go": ".go",
-            "application/x-yaml": ".yaml",
-            "application/x-tar": ".tar",
-            "application/zip": ".zip",
-            "application/x-7z-compressed": ".7z",
-            "application/x-rar-compressed": ".rar",
-            "application/gzip": ".gz",
-        }
-
-        if mimetype in mime_to_extension:
-            return mime_to_extension[mimetype]
+        if mimetype in self.mimetype_extensions:
+            return self.mimetype_extensions[mimetype]
         else:
             return None
 

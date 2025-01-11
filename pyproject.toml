@@ -33,7 +33,10 @@ dependencies = [
     "keyring",
     "cryptography",
     "openai",
+    "pypdf",
+    "pandas",
     "python-docx",
+    "python-pptx",
     "langchain-text-splitters"
 ]
 
