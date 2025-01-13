@@ -64,7 +64,7 @@ class FileHandler:
         if file["path"].startswith("gdrive://"):
             resolved_file = self.gdrive_file_handler._get_google_drive_file_stream(file)
         else:
-            resolved_file = self._get_local_file_stream(file)
+            resolved_file = self.local_file_handler._get_local_file_stream(file)
 
         return resolved_file
     

@@ -110,6 +110,13 @@ class DocumentChat(App):
 
     def on_vector_store_update(self):
         self.collection_names = self.vector_store.get_collection_names()
+        collection_names = [option for option in self.collection_names]
+        selections = [(name, name, False) for name in collection_names]
+
+        chat_screen = self.get_screen("chat")
+        collection_selector = chat_screen.query_one("#collection-selector")
+        collection_selector.clear_options()
+        collection_selector.add_options(selections)
 
     def action_request_quit(self) -> None:
         self.push_screen(QuitScreen())

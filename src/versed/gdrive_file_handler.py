@@ -23,37 +23,20 @@ class GoogleDriveHandler:
             }
         """
         extension = Path(file["name"]).suffix
+        file_id = file["path"].split("/")[-1]
         match extension:
-            case ".txt":
-                file["stream"] = self._get_txt_file_stream(file)
-                file["type"] = ".txt"
+            case ".txt" | ".pdf" | ".ipynb" | ".docx" | ".xlsx" | ".pptx" | ".csv":
+                file["stream"] = self._get_raw_file_stream(file_id)
+                file["type"] = extension
             case ".gdoc":
-                file["stream"] = self._get_google_doc_file_stream(file)
+                file["stream"] = self._get_google_doc_file_stream(file_id)
                 file["type"] = ".docx"
-            case ".docx":
-                file["stream"] = self._get_docx_file_stream(file)
-                file["type"] = ".docx"
-            case ".pdf":
-                file["stream"] = self._get_pdf_file_stream(file)
-                file["type"] = ".pdf"
             case ".gsheet":
-                file["stream"] = self._get_google_sheet_file_stream(file)
+                file["stream"] = self._get_google_sheet_file_stream(file_id)
                 file["type"] = ".gsheet"
             case ".gslides":
-                file["stream"] = self._get_google_slide_file_stream(file)
+                file["stream"] = self._get_google_slide_file_stream(file_id)
                 file["type"] = ".gslides"
-            case ".ipynb":
-                file["stream"] = self._get_notebook_file_stream(file)
-                file["type"] = ".ipynb"
-            case ".xlsx":
-                file["stream"] = self._get_excel_file_stream(file)
-                file["type"] = ".xlsx"
-            case ".pptx":
-                file["stream"] = self._get_pptx_file_stream(file)
-                file["type"] = ".pptx"
-            case ".csv":
-                file["stream"] = self._get_csv_file_stream(file)
-                file["type"] = ".csv"
             case _:
                 raise ValueError(f"Unsupported file type: {extension}")
         
@@ -61,47 +44,43 @@ class GoogleDriveHandler:
 
     # Methods to get file streams:
 
-    def _get_txt_file_stream(self, file: Dict) -> io.BytesIO:
+    def _get_raw_file_stream(self, file_id: str) -> io.BytesIO:
         """
         Gets the file stream of a .txt file from Google Drive.
         """
         service = build('drive', 'v3', credentials=self.credentials)
-        file_id = file["path"]
         return self._download_file_stream(service, file_id)
 
-    def _get_google_doc_file_stream(self, file: Dict) -> io.BytesIO:
+    def _get_google_doc_file_stream(self, file_id: str) -> io.BytesIO:
         """
         Gets the file stream of a Google Doc as a .docx file.
         """
         service = build('drive', 'v3', credentials=self.credentials)
-        file_id = file["path"]
         return self._export_file_stream(
             service, file_id, mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
 
-    def _get_docx_file_stream(self, file: Dict) -> io.BytesIO:
-        """
-        Gets the file stream of a .docx file from Google Drive.
-        """
-        service = build('drive', 'v3', credentials=self.credentials)
-        file_id = file["path"]
-        return self._download_file_stream(service, file_id)
-
-    def _get_pdf_file_stream(self, file: Dict) -> io.BytesIO:
-        """
-        Gets the file stream of a PDF file from Google Drive.
-        """
-        service = build('drive', 'v3', credentials=self.credentials)
-        file_id = file["path"]
-        return self._download_file_stream(service, file_id)
-
-    def _get_google_sheet_file_stream(self, file: Dict) -> io.BytesIO:
+    def _get_google_sheet_file_stream(self, file_id: str) -> io.BytesIO:
         """
         Gets the file stream of a Google Sheet as a .csv file.
         """
         service = build('drive', 'v3', credentials=self.credentials)
-        file_id = file["path"]
         return self._export_file_stream(service, file_id, mime_type="text/csv")
+    
+    def _get_google_slide_file_stream(self, file_id: str) -> io.BytesIO:
+        """
+        Gets the file stream of a Google Slide as a .pptx file.
+
+        Args:
+            file_id (str): The ID of the Google Slides file.
+
+        Returns:
+            io.BytesIO: The file stream of the exported .pptx file.
+        """
+        service = build('drive', 'v3', credentials=self.credentials)
+        return self._export_file_stream(
+            service, file_id, mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        )
 
     # Utility methods:
 

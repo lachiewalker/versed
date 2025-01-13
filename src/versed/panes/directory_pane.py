@@ -21,7 +21,6 @@ from textual.widgets.directory_tree import DirEntry
 from textual.widgets._tree import TOGGLE_STYLE, TreeNode
 from typing import ClassVar
 from versed.screens.docs_screen import DocsScreen
-from versed.screens.debug_modal import DebugScreen
 
 
 class GoogleDriveTree(Tree):
@@ -273,52 +272,64 @@ class DirectoryPane(Container):
     DEFAULT_CSS = """
     DirectoryPane {
         width: 42;
-    }
 
-    #pane-container {
-        height: 1fr;
-        align: center middle;
-        background: $background-lighten-1;
-    }
+        #pane-container {
+            height: 1fr;
+            align: center middle;
+            background: $background-lighten-1;
+        }
 
-    #tabbed-content {
-        height: 0.5fr;
-    }
+        #tabbed-content {
+            height: 0.5fr;
+        }
 
-    TabPane {
-        background: $background-lighten-1;
-        padding: 1;
-    }
+        TabPane {
+            background: $background-lighten-1;
+            padding: 1;
+        }
 
-    #google-drive {
-        height: 1fr;
-        align: center middle;
-    }
+        #google-drive {
+            height: 1fr;
+            align: center middle;
+        }
 
-    #log-in {
-        width: 8;
-        height: 3;
-        text-align: center;
-    }
-    #log-in:focus {
-        text-style: bold;
-    }
+        #log-in {
+            width: 8;
+            height: 3;
+            text-align: center;
+        }
+        #log-in:focus {
+            text-style: bold;
+        }
 
-    #index-button {
-        width: 1fr;
-        height: 3;
-        margin: 1 3;
-        text-align: center;
-        background: $primary;
-    }
-    #index-button:focus {
-        text-style: bold;
+        #index-button {
+            width: 1fr;
+            height: 3;
+            margin: 1 3;
+            text-align: center;
+            background: $primary;
+        }
+        #index-button:focus {
+            text-style: bold;
+        }
+
+        #remove-button {
+            width: 1fr;
+            height: 3;
+            margin: 1 3;
+            text-align: center;
+            background: $error;
+        }
+        #remove-button:focus {
+            text-style: bold;
+        }
     }
     """
     def __init__(self) -> None:
         super().__init__()
         self.logged_in = False
-        self.selected = None
+        self.selected_node = None
+        self.highlighted_collection = None
 
     def compose(self) -> ComposeResult:
         with Vertical(id="pane-container"):
@@ -336,6 +347,7 @@ class DirectoryPane(Container):
                     self.log_in = Button("Log in", variant="success", id="log-in")
                     yield self.log_in
             yield Button("Add to Index", id="index-button")
+            yield Button("Remove Collection", id="remove-button")
 
     def on_mount(self) -> None:
         self.index_tab = self.query_one("#collections-tab", TabPane)
@@ -387,7 +399,8 @@ class DirectoryPane(Container):
         
         return None
 
-    def add_to_collection(self, node, collection):
+    def add_to_collection(self, collection, node):
+        # self.app.push_screen(DebugScreen(collection + " || " + str(type(collection))))
         if self.node_is_dir(node):
             pass
         else:
@@ -420,37 +433,59 @@ class DirectoryPane(Container):
     async def action_index(self) -> None:
         def select_collection(collection_name: str | None) -> None:
             if collection_name:
-                self.add_to_collection(self.selected, collection_name)
+                self.add_to_collection(collection=collection_name, node=self.selected_node)
 
         # Transition to the add collection screen
         self.app.push_screen("select_collection", select_collection)
+
+    @on(Button.Pressed, "#remove-button")
+    async def action_remove(self) -> None:
+        if self.highlighted_collection is not None:
+            self.app.vector_store.remove_collection(self.highlighted_collection, callback=self.app.on_vector_store_update)
 
     @on(DirectoryTree.FileSelected, "#local-tree")
     async def action_handle_local_file_selection(self, event: DirectoryTree.NodeSelected) -> None:
         """Enable the button when a node is selected in the DirectoryTree."""
         self.query_one("#index-button", Button).disabled = False
-        self.selected = event.node
+        self.selected_node = event.node
 
     @on(DirectoryTree.DirectorySelected, "#local-tree")
     async def action_handle_local_dir_selection(self, event: DirectoryTree.NodeSelected) -> None:
         """Enable the button when a node is selected in the DirectoryTree."""
         self.query_one("#index-button", Button).disabled = False
-        self.selected = event.node
+        self.selected_node = event.node
 
     @on(GoogleDriveTree.NodeSelected, "#gdrive-tree")
     async def action_handle_google_selection(self, event: DirectoryTree.NodeSelected) -> None:
         """Enable the button when a node is selected in the DirectoryTree."""
         self.query_one("#index-button", Button).disabled = False
-        self.selected = event.node
+        self.selected_node = event.node
         # is_dir = self.node_is_dir(event.node)
 
+    @on(SelectionList.SelectionHighlighted, "#collection-selector")
+    async def action_collection_highlighted(self, event) -> None:
+        highlighted_selection = event.selection
+        if highlighted_selection is not None:
+            self.highlighted_collection = str(highlighted_selection.prompt)
+    
     @on(TabbedContent.TabActivated)
     async def reset_button_on_tab_show(self, event: TabbedContent.TabActivated) -> None:
         """Disable the button when the Local Files tab is shown."""
-        self.query_one("#index-button", Button).disabled = True
+        add_to_index_button = self.query_one("#index-button", Button)
+        remove_collection_button = self.query_one("#remove-button", Button)
 
+        # Handle button visibility
+        if event.pane.id == "collections-tab":
+            add_to_index_button.display = "none"
+            remove_collection_button.display = "block"
+        else:
+            add_to_index_button.display = "block"
+            remove_collection_button.display = "none"
+
+        # Handle index button enablement
         tab_pane = event.pane
         if tab_pane.id in ["local-files", "google-drive"]:
+            add_to_index_button.disabled = True
             try:
                 tree = tab_pane.query_one(Tree)
                 tree.move_cursor(None)

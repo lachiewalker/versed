@@ -98,13 +98,6 @@ class AddCollectionScreen(ModalScreen):
         name_input = self.query_one("#name_input", Input)
 
         self.app.vector_store.add_collection(collection_name, callback=self.app.on_vector_store_update)
-
-        chat_screen = self.app.get_screen("chat")
-        if chat_screen is not None:
-            collection_selector = chat_screen.query_one("#collection-selector")
-        collection_selector.add_option(
-            (collection_name, collection_name, True)
-        )
         await self.show_message("Collection Added", "success")
 
         # Disable clickables
